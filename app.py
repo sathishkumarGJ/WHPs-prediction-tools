@@ -24,7 +24,7 @@ antiinflammatory_model = joblib.load('AIP_ALLFRMs_split_03_XG_jlib')
 CHTgroups={1:["A",'G','Q','N','P','S','T','V'],2:['W','Y','F'],3:['D','E'],4:['H','R','K'],5:['C','I','L','M']} # i need to change Group to CHT 
 
 def check_seq (sequence):
-    AAletter= ["A","R","N","D","C","E","Q","G","H","I","L","K","M","F","P","S","T","W","Y","V"]
+    AAletter= ["A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y"]
     for k in sequence:
         if k not in AAletter:
             return "invalid"
@@ -152,45 +152,82 @@ def Calculate_PCP(seq):
 
 def antimicrobial_features(sequence):
      #Amino Acid Symbols
-    AALetter=["A","R","N","D","C","E","Q","G","H","I","L","K","M","F","P","S","T","W","Y","V"]
+    #AALetter=["A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y"]
  
-    final_features = []
-    for i in AALetter:
-        counter=0
-        for j in sequence:
-            if j==i:
-                counter = counter+1    
-        final_features.append(counter / len(sequence))
+    #final_features = []
+    #for i in AALetter:
+        #counter=0
+        #for j in sequence:
+            #if j==i:
+                #counter = counter+1    
+        #final_features.append(counter / len(sequence))
+    
+    # Amino Acid Composition (AAC) features	
+   # Amino Acid Composition (AAC) features
+    aac_features = [sequence.count(aa) / len(sequence) for aa in "ARNDCEQGHILKMFPSTWYV"]
 
-    physio = Calculate_PCP(sequence)
+    # PCP features
+    physio = calculate_physio(sequence)
+    physio_df = pd.DataFrame([physio], columns=n2.feature_names_in_)
+    physio_scaled = n2.transform(physio_df)
+    physio_min_max = np.clip(physio_scaled, a_min=0, a_max=1).flatten()
+
+    # Conjoint Triad (CT) features
+    ctf = CalculateConjointTriad(sequence)
+    ct_features = list(ctf.values())
+
+    # Combine all features
+    final_features_antimicrobial = np.concatenate([physio_min_max, aac_features, ct_features])
+    return final_features_antimicrobial
+
+
+	
+    #physio = Calculate_PCP(sequence)
 #scaling the new features with the scaler made using training data
-    scl= joblib.load('AMP01_PCD_min_max_scaled_final_jlib')
-    physio=scl.transform([physio])
-    physio= physio.tolist()
-    CHT = Calculate_CHT(sequence)
-    final_features= physio[0] + final_features + list(CHT.values()) 
-    return final_features
+    #scl= joblib.load('AMP01_PCD_min_max_scaled_final_jlib')
+    #physio=scl.transform([physio])
+    #physio= physio.tolist()
+    #CHT = Calculate_CHT(sequence)
+    #final_features= final_features + list(CHT.values()) + physio[0] 
+    #return final_features
 
 def antiinflammatory_features(sequence):
      #Amino Acid Symbols
-    AALetter=["A","R","N","D","C","E","Q","G","H","I","L","K","M","F","P","S","T","W","Y","V"]
+    #AALetter=["A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y"]
  
-    final_features = []
-    for i in AALetter:
-        counter=0
-        for j in sequence:
-            if j==i:
-                counter = counter+1    
-        final_features.append(counter / len(sequence))
+    #final_features = []
+    #for i in AALetter:
+        #counter=0
+        #for j in sequence:
+            #if j==i:
+                #counter = counter+1    
+        #final_features.append(counter / len(sequence))
 
-    physio = Calculate_PCP(sequence)
+    #physio = Calculate_PCP(sequence)
 #scaling the new features with the scaler made using training data
-    scl= joblib.load('AIP_PCD_min_max_scaled_final_jlib')
-    physio=scl.transform([physio])
-    physio= physio.tolist()
-    CHT = Calculate_CHT(sequence)
-    final_features= physio[0] + final_features + list(CHT.values()) 
-    return final_features
+    #scl= joblib.load('AIP_PCD_min_max_scaled_final_jlib')
+    #physio=scl.transform([physio])
+    #physio= physio.tolist()
+    #CHT = Calculate_CHT(sequence)
+    #final_features= final_features + list(CHT.values()) + physio[0] 
+    #return final_features
+    aac_features = [sequence.count(aa) / len(sequence) for aa in "ARNDCEQGHILKMFPSTWYV"]
+
+    # PCP features
+    physio = calculate_physio(sequence)
+    physio_df = pd.DataFrame([physio], columns=n3.feature_names_in_)
+    physio_scaled = n3.transform(physio_df)
+    pcp_features = np.clip(physio_scaled, a_min=0, a_max=1).flatten()
+
+    # Conjoint Triad (CT) features
+    ctf = CalculateConjointTriad(sequence)
+    ct_features = list(ctf.values())
+    
+   
+    # Combine all features into a single array for efficacy prediction
+    final_features_antinflammatory = np.concatenate([ aac_features, pcp_features, ct_features])
+    
+    return final_features_antinflammatory	
 
 def model_predict_antimicrobial(sequence):
     final_features= antimicrobial_features(sequence)
